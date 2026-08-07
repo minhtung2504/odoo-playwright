@@ -30,7 +30,7 @@ class AsyncOdooPage:
 
     def view(self, model: str, view_type: str = "form"):
         """Get a view object for a model."""
-        from odoo_playwright.views_async import AsyncFormView, AsyncListView, AsyncKanbanView
+        from odoo_playwright.views_async import AsyncFormView, AsyncKanbanView, AsyncListView
 
         view_classes = {
             "form": AsyncFormView,

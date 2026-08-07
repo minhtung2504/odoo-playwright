@@ -1,6 +1,5 @@
 """Example tests for Odoo Playwright."""
 
-import pytest
 from odoo_playwright import OdooUI
 
 
@@ -128,7 +127,7 @@ class TestOdooPageObject:
 
     def test_page_navigation(self, odoo_ui: OdooUI):
         """Test page object navigation."""
-        page = odoo_ui.page("Settings").navigate()
+        odoo_ui.page("Settings").navigate()
         assert odoo_ui.page.locator(".o_content").count() > 0
 
 

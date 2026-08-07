@@ -2,12 +2,13 @@
 
 import re
 import urllib.parse
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional, Union, AsyncGenerator
+from typing import Any, Optional
 
-from playwright.async_api import Page, Locator
+from playwright.async_api import Locator, Page
 
-from odoo_playwright.selectors import OdooSelectors, get_selectors
+from odoo_playwright.selectors import get_selectors
 from odoo_playwright.wait import AsyncWaitHelper
 
 
@@ -62,7 +63,7 @@ class AsyncOdooUI:
         await self.page.get_by_text("Log out", exact=True).click()
         await self.wait.for_all()
 
-    async def get_url_fragments(self) -> Dict[str, str]:
+    async def get_url_fragments(self) -> dict[str, str]:
         url = self.page.url
         parsed = urllib.parse.urlparse(url)
         fragment = parsed.fragment or parsed.query
@@ -109,7 +110,7 @@ class AsyncOdooUI:
 
         for item in menu_items:
             menu_locator = self.page.locator(
-                f".o_submenu, .oe_secondary_menu, .o_menu_entry_lvl_2, .o_menu_entry_lvl_3"
+                ".o_submenu, .oe_secondary_menu, .o_menu_entry_lvl_2, .o_menu_entry_lvl_3"
             ).get_by_text(item, exact=True).first
             await menu_locator.click()
             await self.wait.for_all()
@@ -320,7 +321,7 @@ class AsyncOdooUI:
         ).click()
         await self.wait.for_ajax()
 
-    async def get_list_values(self, columns: Optional[List[str]] = None) -> List[Dict[str, str]]:
+    async def get_list_values(self, columns: Optional[list[str]] = None) -> list[dict[str, str]]:
         rows = self.get_list_rows()
         result = []
 
@@ -361,7 +362,7 @@ class AsyncOdooUI:
         await self.wait.for_all()
         return True
 
-    async def get_pager_info(self) -> Dict[str, int]:
+    async def get_pager_info(self) -> dict[str, int]:
         info_elem = self.page.locator(self.selectors.get("pager_info"))
         text = await info_elem.inner_text()
 
@@ -405,7 +406,7 @@ class AsyncOdooUI:
         await self.page.get_by_role("button", name="Cancel").click()
         await self.wait.for_all()
 
-    async def get_notification(self) -> Optional[Dict[str, str]]:
+    async def get_notification(self) -> Optional[dict[str, str]]:
         notif = self.page.locator(self.selectors.get("notification")).first
         if await notif.count() == 0:
             return None
@@ -425,7 +426,7 @@ class AsyncOdooUI:
             "message": await notif.inner_text(),
         }
 
-    async def wait_for_notification(self, timeout: int = 5000) -> Optional[Dict[str, str]]:
+    async def wait_for_notification(self, timeout: int = 5000) -> Optional[dict[str, str]]:
         await self.page.wait_for_selector(self.selectors.get("notification"), timeout=timeout)
         return await self.get_notification()
 
@@ -480,7 +481,7 @@ class AsyncOdooUI:
         return AsyncOdooPage(self, name)
 
     def view(self, model: str, view_type: str = "form"):
-        from odoo_playwright.views_async import AsyncFormView, AsyncListView, AsyncKanbanView
+        from odoo_playwright.views_async import AsyncFormView, AsyncKanbanView, AsyncListView
 
         view_classes = {
             "form": AsyncFormView,

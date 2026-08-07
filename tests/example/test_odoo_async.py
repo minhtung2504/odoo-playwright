@@ -1,6 +1,5 @@
 """Async example tests for Odoo Playwright."""
 
-import pytest
 from odoo_playwright.ui_async import AsyncOdooUI
 
 

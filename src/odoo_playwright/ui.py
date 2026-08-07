@@ -2,12 +2,13 @@
 
 import re
 import urllib.parse
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Union, Generator
+from typing import Any, Optional
 
-from playwright.sync_api import Page, Locator, expect
+from playwright.sync_api import Locator, Page
 
-from odoo_playwright.selectors import OdooSelectors, get_selectors
+from odoo_playwright.selectors import get_selectors
 from odoo_playwright.wait import WaitHelper
 
 
@@ -66,7 +67,7 @@ class OdooUI:
         self.page.get_by_text("Log out", exact=True).click()
         self.wait.for_all()
 
-    def get_url_fragments(self) -> Dict[str, str]:
+    def get_url_fragments(self) -> dict[str, str]:
         """Parse URL hash/fragment into dictionary."""
         url = self.page.url
         parsed = urllib.parse.urlparse(url)
@@ -120,7 +121,7 @@ class OdooUI:
 
         for item in menu_items:
             menu_locator = self.page.locator(
-                f".o_submenu, .oe_secondary_menu, .o_menu_entry_lvl_2, .o_menu_entry_lvl_3"
+                ".o_submenu, .oe_secondary_menu, .o_menu_entry_lvl_2, .o_menu_entry_lvl_3"
             ).get_by_text(item, exact=True).first
             menu_locator.click()
             self.wait.for_all()
@@ -356,7 +357,7 @@ class OdooUI:
         ).click()
         self.wait.for_ajax()
 
-    def get_list_values(self, columns: Optional[List[str]] = None) -> List[Dict[str, str]]:
+    def get_list_values(self, columns: Optional[list[str]] = None) -> list[dict[str, str]]:
         """Get all row values from list view."""
         rows = self.get_list_rows()
         result = []
@@ -408,7 +409,7 @@ class OdooUI:
         self.page.locator(self.selectors.get("pager_next")).click()
         self.wait.for_all()
 
-    def get_pager_info(self) -> Dict[str, int]:
+    def get_pager_info(self) -> dict[str, int]:
         """Get pager information (from, to, total)."""
         info_elem = self.page.locator(self.selectors.get("pager_info"))
         text = info_elem.inner_text()
@@ -460,7 +461,7 @@ class OdooUI:
         self.page.get_by_role("button", name="Cancel").click()
         self.wait.for_all()
 
-    def get_notification(self) -> Optional[Dict[str, str]]:
+    def get_notification(self) -> Optional[dict[str, str]]:
         """Get the current notification (if any)."""
         notif = self.page.locator(self.selectors.get("notification")).first
         if notif.count() == 0:
@@ -481,7 +482,7 @@ class OdooUI:
             "message": notif.inner_text(),
         }
 
-    def wait_for_notification(self, timeout: int = 5000) -> Optional[Dict[str, str]]:
+    def wait_for_notification(self, timeout: int = 5000) -> Optional[dict[str, str]]:
         """Wait for a notification to appear."""
         self.page.wait_for_selector(self.selectors.get("notification"), timeout=timeout)
         return self.get_notification()
@@ -545,7 +546,7 @@ class OdooUI:
 
     def view(self, model: str, view_type: str = "form"):
         """Get a view object."""
-        from odoo_playwright.views import FormView, ListView, KanbanView
+        from odoo_playwright.views import FormView, KanbanView, ListView
 
         view_classes = {
             "form": FormView,

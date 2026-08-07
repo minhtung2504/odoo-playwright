@@ -1,8 +1,8 @@
 """Async view objects for Odoo UI (Form, List, Kanban)."""
 
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Any, Optional
 
-from playwright.async_api import Locator, Page
+from playwright.async_api import Locator
 
 if TYPE_CHECKING:
     from odoo_playwright.ui_async import AsyncOdooUI
@@ -119,7 +119,7 @@ class AsyncFormView(AsyncBaseView):
         await delete_btn.click()
         await self.ui.wait.for_ajax()
 
-    async def get_one2many_values(self, field_name: str, columns: Optional[List[str]] = None) -> List[Dict[str, str]]:
+    async def get_one2many_values(self, field_name: str, columns: Optional[list[str]] = None) -> list[dict[str, str]]:
         """Get all values from a one2many field."""
         result = []
         rows = self.page.locator(f"[name='{field_name}'] .o_data_row, [data-field='{field_name}'] .o_data_row")
@@ -191,7 +191,7 @@ class AsyncListView(AsyncBaseView):
         """Get all rows."""
         return self.ui.get_list_rows()
 
-    async def get_values(self, columns: Optional[List[str]] = None) -> List[Dict[str, str]]:
+    async def get_values(self, columns: Optional[list[str]] = None) -> list[dict[str, str]]:
         """Get all row values."""
         return await self.ui.get_list_values(columns)
 
@@ -235,7 +235,7 @@ class AsyncListView(AsyncBaseView):
         """Go to previous page."""
         return await self.ui.pager_previous()
 
-    async def get_pager_info(self) -> Dict[str, int]:
+    async def get_pager_info(self) -> dict[str, int]:
         """Get pager information."""
         return await self.ui.get_pager_info()
 

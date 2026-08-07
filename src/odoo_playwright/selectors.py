@@ -1,7 +1,6 @@
 """Version-specific selectors for Odoo 16, 17, 18, 19."""
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -44,7 +43,7 @@ class OdooSelectors:
         return selectors.get(key, "")
 
 
-SELECTORS_V16: Dict[str, str] = {
+SELECTORS_V16: dict[str, str] = {
     OdooSelectors.MENU_ITEM: ".o_menu_entry",
     OdooSelectors.SUBMENU_ITEM: ".o_menu_entry_lvl_2, .o_menu_entry_lvl_3",
     OdooSelectors.VIEW_SWITCHER: ".o_cp_switch_buttons button",
@@ -77,7 +76,7 @@ SELECTORS_V16: Dict[str, str] = {
     OdooSelectors.DATEPICKER: ".o_datepicker_input",
 }
 
-SELECTORS_V17: Dict[str, str] = {
+SELECTORS_V17: dict[str, str] = {
     OdooSelectors.MENU_ITEM: ".o_menu_entry",
     OdooSelectors.SUBMENU_ITEM: ".o_menu_entry_lvl_2, .o_menu_entry_lvl_3",
     OdooSelectors.VIEW_SWITCHER: ".o_cp_switch_buttons button",
@@ -110,7 +109,7 @@ SELECTORS_V17: Dict[str, str] = {
     OdooSelectors.DATEPICKER: ".o_datepicker_input, .o_datepicker",
 }
 
-SELECTORS_V18: Dict[str, str] = {
+SELECTORS_V18: dict[str, str] = {
     OdooSelectors.MENU_ITEM: ".o_menu_entry, .o_navbar_menu_item",
     OdooSelectors.SUBMENU_ITEM: ".o_menu_entry_lvl_2, .o_menu_entry_lvl_3, .o_submenu_item",
     OdooSelectors.VIEW_SWITCHER: ".o_cp_switch_buttons button, [data-view-type]",
@@ -143,7 +142,7 @@ SELECTORS_V18: Dict[str, str] = {
     OdooSelectors.DATEPICKER: ".o_datepicker_input, .o_datepicker, input[type='date']",
 }
 
-SELECTORS_V19: Dict[str, str] = {
+SELECTORS_V19: dict[str, str] = {
     OdooSelectors.MENU_ITEM: ".o_menu_entry, .o_navbar_menu_item, [data-menu]",
     OdooSelectors.SUBMENU_ITEM: ".o_menu_entry_lvl_2, .o_menu_entry_lvl_3, .o_submenu_item, [data-submenu]",
     OdooSelectors.VIEW_SWITCHER: ".o_cp_switch_buttons button, [data-view-type], .o_view_switcher button",
@@ -176,7 +175,7 @@ SELECTORS_V19: Dict[str, str] = {
     OdooSelectors.DATEPICKER: ".o_datepicker_input, .o_datepicker, input[type='date'], [data-type='date']",
 }
 
-SELECTORS_BY_VERSION: Dict[int, Dict[str, str]] = {
+SELECTORS_BY_VERSION: dict[int, dict[str, str]] = {
     16: SELECTORS_V16,
     17: SELECTORS_V17,
     18: SELECTORS_V18,

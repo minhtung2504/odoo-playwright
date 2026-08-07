@@ -1,6 +1,6 @@
 """Page object model for Odoo UI."""
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from odoo_playwright.ui import OdooUI
@@ -30,7 +30,7 @@ class OdooPage:
 
     def view(self, model: str, view_type: str = "form"):
         """Get a view object for a model."""
-        from odoo_playwright.views import FormView, ListView, KanbanView
+        from odoo_playwright.views import FormView, KanbanView, ListView
 
         view_classes = {
             "form": FormView,

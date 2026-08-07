@@ -1,10 +1,10 @@
 """Test case base class for Odoo UI testing."""
 
 import os
-from typing import Any, Dict, Optional
+from typing import Optional
 
-from playwright.sync_api import Page, Browser, BrowserContext, Playwright, sync_playwright
 import pytest
+from playwright.sync_api import Browser, BrowserContext, Playwright
 
 
 class OdooTestCase:
@@ -27,7 +27,7 @@ class OdooTestCase:
     headless: bool = True
     slow_mo: int = 0
     browser_type: str = "chromium"
-    viewport: Dict[str, int] = {"width": 1280, "height": 720}
+    viewport: dict[str, int] = {"width": 1280, "height": 720}
     locale: str = "en-US"
     timezone: str = "UTC"
 
@@ -91,7 +91,7 @@ class AsyncOdooTestCase:
     headless: bool = True
     slow_mo: int = 0
     browser_type: str = "chromium"
-    viewport: Dict[str, int] = {"width": 1280, "height": 720}
+    viewport: dict[str, int] = {"width": 1280, "height": 720}
     locale: str = "en-US"
     timezone: str = "UTC"
 

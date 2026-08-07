@@ -1,10 +1,9 @@
 """Wait utilities for Odoo Playwright."""
 
-import asyncio
-from typing import Optional
 
-from playwright.async_api import Page, Locator
-from playwright.sync_api import Page as SyncPage, Locator as SyncLocator
+from playwright.async_api import Locator, Page
+from playwright.sync_api import Locator as SyncLocator
+from playwright.sync_api import Page as SyncPage
 
 
 async def wait_for_odbus_async(page: Page, timeout: int = 30000) -> None:
