@@ -1,15 +1,16 @@
 """Pytest fixtures for Odoo Playwright testing."""
 
 import os
-from typing import Generator, AsyncGenerator
 
 import pytest
-from playwright.sync_api import Playwright, Browser, BrowserContext, Page, sync_playwright
-from playwright.async_api import Playwright as AsyncPlaywright, Browser as AsyncBrowser, async_playwright
+from playwright.async_api import Browser as AsyncBrowser
+from playwright.async_api import Playwright as AsyncPlaywright
+from playwright.async_api import async_playwright
+from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
 
+from odoo_playwright.testcase import OdooConfig
 from odoo_playwright.ui import OdooUI
 from odoo_playwright.ui_async import AsyncOdooUI
-from odoo_playwright.testcase import OdooConfig
 
 
 def get_config() -> OdooConfig:
@@ -96,7 +97,7 @@ def odoo_page(odoo_ui: OdooUI):
 
 
 @pytest.fixture(scope="session")
-def async_playwright_instance():
+async def async_playwright_instance():
     """Create async Playwright instance."""
     async with async_playwright() as p:
         yield p

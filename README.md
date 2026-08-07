@@ -165,6 +165,45 @@ kanban.quick_create(column_name="To Do", name="New Task")
 kanban.move_card_to_column("My Task", "In Progress")
 ```
 
+## MCP server for coding agents
+
+Install the optional MCP extra and expose the current Odoo feature repository as a local stdio MCP server. Run the command from the repository where tests should be created and executed:
+
+```bash
+pip install "odoo-playwright[mcp]"
+playwright install chromium
+odoo-playwright-mcp
+```
+
+Example MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "odoo-playwright": {
+      "command": "odoo-playwright-mcp",
+      "env": {
+        "ODOO_URL": "http://localhost:8069",
+        "ODOO_USER": "admin",
+        "ODOO_PASSWORD": "admin",
+        "ODOO_DB": "test",
+        "ODOO_VERSION": "17",
+        "HEADLESS": "true"
+      }
+    }
+  }
+}
+```
+
+Available tools:
+
+- `get_test_config` — show the expected Odoo test environment.
+- `create_test_template` — generate a pytest skeleton using the `odoo_ui` fixture.
+- `write_test` — write generated tests safely under `tests/**/test_*.py`.
+- `run_tests` — run pytest without shell expansion and return exit code plus output.
+
+This lets an agent that just changed an Odoo feature immediately create and run a focused Playwright regression test from the same MCP surface.
+
 ## Configuration
 
 ### Environment Variables

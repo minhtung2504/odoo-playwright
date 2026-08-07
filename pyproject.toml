@@ -36,6 +36,12 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
 ]
+mcp = [
+    "mcp>=2.0.0",
+]
+
+[project.scripts]
+odoo-playwright-mcp = "odoo_playwright.mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/antoine/odoo-playwright"
