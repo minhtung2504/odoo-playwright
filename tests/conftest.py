@@ -96,14 +96,14 @@ def odoo_page(odoo_ui: OdooUI):
     return odoo_ui
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 async def async_playwright_instance():
     """Create async Playwright instance."""
     async with async_playwright() as p:
         yield p
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 async def async_browser(async_playwright_instance: AsyncPlaywright, browser_type_launch_args):
     """Create async browser instance."""
     browser = await async_playwright_instance.chromium.launch(**browser_type_launch_args)
@@ -111,7 +111,7 @@ async def async_browser(async_playwright_instance: AsyncPlaywright, browser_type
     await browser.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 async def async_context(async_browser: AsyncBrowser, browser_context_args):
     """Create async browser context."""
     context = await async_browser.new_context(**browser_context_args)
@@ -119,7 +119,7 @@ async def async_context(async_browser: AsyncBrowser, browser_context_args):
     await context.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 async def async_page(async_context):
     """Create async page."""
     page = await async_context.new_page()

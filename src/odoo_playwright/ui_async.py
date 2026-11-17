@@ -1,5 +1,6 @@
 """Async version of Odoo UI class."""
 
+import asyncio
 import re
 import urllib.parse
 from collections.abc import AsyncGenerator
@@ -53,7 +54,7 @@ class AsyncOdooUI:
 
         await self.page.locator("#login").fill(username)
         await self.page.locator("#password").fill(password)
-        await self.page.locator("button[type='submit'], .btn-primary").click()
+        await self.page.locator("button.btn.btn-primary:not(.oe_search_button)").click()
 
         await self.wait.for_all()
         await self.page.wait_for_url("**/web**")
@@ -89,12 +90,13 @@ class AsyncOdooUI:
 
     async def go_to_app(self, app_name: str, timeout: int = 10000) -> None:
         await self.wait.for_all()
-
-        app_menu = self.page.get_by_text(app_name, exact=True).first
-        await app_menu.click()
-
+        await self.page.keyboard.press("ControlOrMeta+k")  # Cmd+K trên Mac, Ctrl+K trên Windows/Linux
+        palette_input = self.page.locator(".o_command_palette input")
+        await palette_input.wait_for(state="visible", timeout=timeout)
+        await palette_input.fill(f"/{app_name}")
+        await self.page.keyboard.press("Enter")
         await self.wait.for_all()
-        await self.page.wait_for_selector(".o_content, .o_view_controller", timeout=timeout)
+        await self.page.wait_for_selector(".o_content, .o_action_manager", timeout=timeout)
 
     async def go_to_menu(self, *menu_path: str, timeout: int = 10000) -> None:
         if len(menu_path) == 0:
@@ -129,8 +131,22 @@ class AsyncOdooUI:
         return fragments.get("view_type")
 
     async def click_create(self, timeout: int = 10000) -> None:
-        create_btn = self.page.locator(self.selectors.get("button_create"))
-        await create_btn.click()
+        selector = self.selectors.get("button_create") + ":not([disabled])"
+        buttons = self.page.locator(selector)
+        clicked = False
+        try:
+            count = await buttons.count()
+            for i in range(count):
+                btn = buttons.nth(i)
+                if await btn.is_visible():
+                    await btn.scroll_into_view_if_needed(timeout=timeout)
+                    await btn.click(timeout=timeout)
+                    clicked = True
+                    break
+        except Exception:
+            clicked = False
+        if not clicked:
+            await self.page.keyboard.press("c")
         await self.wait.for_all()
 
     async def click_save(self, timeout: int = 10000) -> None:
@@ -149,8 +165,20 @@ class AsyncOdooUI:
         await self.wait.for_all()
 
     async def click_delete(self, confirm: bool = True, timeout: int = 10000) -> None:
-        delete_btn = self.page.locator(self.selectors.get("button_delete"))
-        await delete_btn.click()
+        try:
+            delete_btn = self.page.locator(
+                self.selectors.get("button_delete") + ":has-text('Delete')"
+            )
+            if await delete_btn.count() > 0:
+                await delete_btn.click()
+            else:
+                # Fallback: check action menu in dropdown
+                await self.page.locator(".o_cp_action_menus button").click()
+                await self.page.get_by_text("Delete", exact=True).click()
+        except Exception:
+            # Final fallback: try the selector directly
+            delete_btn = self.page.locator(self.selectors.get("button_delete"))
+            await delete_btn.click()
 
         if confirm:
             self.page.on("dialog", lambda dialog: dialog.accept())
@@ -169,9 +197,15 @@ class AsyncOdooUI:
         await self.wait.for_all()
 
     def get_field(self, field_name: str) -> Locator:
-        return self.page.locator(
-            f"[name='{field_name}'], [data-field='{field_name}'], [data-field-name='{field_name}']"
-        ).first
+        # Odoo 17+ uses 'name' attribute on field widget div, not on inputs
+        # Field structure: <div class="o_field_widget" name="field_name"> <input /> </div>
+        field_widget = self.page.locator(f".o_field_widget[name='{field_name}']").first
+
+        # Return the input inside the field widget, or the widget itself for non-input fields
+        input_in_widget = field_widget.locator("input, textarea, select").first
+
+        # Try the input first, then fallback to the widget
+        return input_in_widget
 
     async def get_field_value(self, field_name: str) -> str:
         field = self.get_field(field_name)
@@ -180,7 +214,10 @@ class AsyncOdooUI:
         input_type = await field.get_attribute("type") or ""
 
         if tag == "select":
-            return await field.locator("option:checked").inner_text()
+            option = field.locator("option:checked").first
+            if await option.count() > 0:
+                return await option.inner_text()
+            return await field.get_attribute("data-value") or ""
         elif input_type == "checkbox":
             return str(await field.is_checked())
         elif tag == "input" or tag == "textarea":
@@ -188,15 +225,51 @@ class AsyncOdooUI:
         else:
             return await field.inner_text()
 
-    async def fill_field(self, field_name: str, value: Any) -> None:
+    async def fill_field(self, field_name: str, value: Any, timeout: int = 30000) -> None:
         field = self.get_field(field_name)
 
-        await field.wait_for(state="visible")
+        try:
+            await field.wait_for(state="visible", timeout=timeout)
+        except Exception:
+            # Wait a bit more for the form to load, then try to get available fields
+            await asyncio.sleep(1)
+
+            available_fields = await self.page.evaluate("""
+                () => {
+                    const fields = [];
+                    document.querySelectorAll('input[name], textarea[name], select[name]').forEach(el => {
+                        fields.push(el.name);
+                    });
+                    document.querySelectorAll('.o_field_widget[data-field]').forEach(el => {
+                        fields.push(el.dataset.field);
+                    });
+                    document.querySelectorAll('.o_field_many2one[data-field]').forEach(el => {
+                        fields.push(el.dataset.field + ' (many2one)');
+                    });
+                    return [...new Set(fields)].sort();
+                }
+            """)
+            raise TimeoutError(
+                f"Field '{field_name}' not found or not visible. Available fields: {available_fields}"
+            )
+
         await field.scroll_into_view_if_needed()
 
         tag = await field.evaluate("el => el.tagName.toLowerCase()")
         input_type = await field.get_attribute("type") or ""
         field_class = await field.get_attribute("class") or ""
+
+        # Check if this is a many2one field by looking at parent containers
+        is_many2one = "many2one" in field_class.lower()
+        if not is_many2one:
+            is_many2one = await field.evaluate("""el => {
+                let p = el.parentElement;
+                while(p) {
+                    if(p.className.includes('many2one')) return true;
+                    p = p.parentElement;
+                }
+                return false;
+            }""")
 
         if tag == "select":
             await field.select_option(label=str(value))
@@ -207,7 +280,7 @@ class AsyncOdooUI:
         elif "datepicker" in field_class.lower() or input_type == "date":
             await field.fill(str(value))
             await self.page.keyboard.press("Enter")
-        elif "many2one" in field_class.lower():
+        elif is_many2one:
             await self.fill_many2one(field_name, str(value))
         else:
             await field.click()
@@ -229,7 +302,13 @@ class AsyncOdooUI:
         input_elem = field.locator("input").first
         await input_elem.fill(value)
 
-        await self.page.wait_for_selector(".ui-autocomplete, .o_dropdown_menu", timeout=5000)
+        try:
+            await self.page.wait_for_selector(
+                ".o_dropdown_menu, .ui-autocomplete",
+                timeout=5000
+            )
+        except Exception:
+            raise TimeoutError(f"No dropdown found for many2one field '{field_name}'")
 
         if search_more:
             await self.page.get_by_text("Search More...").click()
@@ -239,7 +318,8 @@ class AsyncOdooUI:
             await self.page.get_by_text("Create and Edit...").click()
             await self.wait.for_all()
         else:
-            dropdown_item = self.page.locator(".ui-autocomplete, .o_dropdown_menu").get_by_text(value, exact=True).first
+            dropdown_selector = ".o_dropdown_menu:visible, .ui-autocomplete:visible"
+            dropdown_item = self.page.locator(dropdown_selector).get_by_text(value, exact=True).first
             if await dropdown_item.count() > 0:
                 await dropdown_item.click()
             else:
@@ -259,7 +339,9 @@ class AsyncOdooUI:
         await self.wait.for_ajax()
 
     async def go_to_tab(self, tab_name: str) -> None:
-        tab = self.page.locator(".o_notebook_tabs, .nav-tabs").get_by_role("tab", name=tab_name)
+        tab = self.page.locator(
+            ".o_notebook .nav-link, .o_notebook_tabs .nav-link, .nav-tabs .nav-link"
+        ).get_by_text(tab_name, exact=True)
         await tab.click()
         await self.wait.for_ajax()
 
@@ -267,7 +349,12 @@ class AsyncOdooUI:
         if clear_previous:
             await self.clear_search()
 
+        search_btn = self.page.locator(".o_searchview_toggle, .o_searchview button")
+        if await search_btn.count() > 0:
+            await search_btn.click()
+
         search_input = self.page.locator(self.selectors.get("search_input"))
+        await search_input.wait_for(state="visible", timeout=5000)
         await search_input.click()
         await search_input.fill(query)
         await self.page.keyboard.press("Enter")
@@ -392,9 +479,19 @@ class AsyncOdooUI:
         modal = self.page.locator(self.selectors.get("modal"))
 
         if save:
-            await modal.locator("button[name='save'], button:has-text('Save'), .btn-primary").click()
+            save_btn = modal.locator(
+                "button[name='save'], button.btn-primary:has-text('Save'), "
+                ".modal-footer button:last-child"
+            ).first
+            if await save_btn.count() > 0:
+                await save_btn.click()
         else:
-            await modal.locator("button[name='cancel'], button:has-text('Cancel'), .btn-secondary, .close").first.click()
+            cancel_btn = modal.locator(
+                "button[name='cancel'], button.btn-secondary:has-text('Cancel'), "
+                ".modal-footer button:first-child, .close"
+            ).first
+            if await cancel_btn.count() > 0:
+                await cancel_btn.click()
 
         await self.wait.for_all()
 

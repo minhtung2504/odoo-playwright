@@ -77,14 +77,15 @@ SELECTORS_V16: dict[str, str] = {
 }
 
 SELECTORS_V17: dict[str, str] = {
-    OdooSelectors.MENU_ITEM: ".o_menu_entry",
+    OdooSelectors.MENU_ITEM: ".o_menu_entry_lvl_1, .o_menu_entry",
     OdooSelectors.SUBMENU_ITEM: ".o_menu_entry_lvl_2, .o_menu_entry_lvl_3",
     OdooSelectors.VIEW_SWITCHER: ".o_cp_switch_buttons button",
-    OdooSelectors.BUTTON_CREATE: "button[name='create'], button.o_form_button_create, button.o_list_button_add",
-    OdooSelectors.BUTTON_SAVE: "button[name='save'], button.o_form_button_save",
-    OdooSelectors.BUTTON_EDIT: "button[name='edit'], button.o_form_button_edit",
-    OdooSelectors.BUTTON_DISCARD: "button[name='cancel'], button.o_form_button_cancel",
-    OdooSelectors.BUTTON_DELETE: "button[name='delete'], button.o_form_button_delete",
+    OdooSelectors.BUTTON_CREATE: "button.o_form_button_create, button.o_list_button_add, button.o_kanban_button_new",
+    OdooSelectors.BUTTON_SAVE: "button.o_form_button_save",
+    OdooSelectors.BUTTON_EDIT: "button.o_form_button_edit",
+    OdooSelectors.BUTTON_DISCARD: "button.o_form_button_cancel",
+    # Odoo 17 thường đưa nút Delete vào menu Action (ícon bánh răng). Cần lọc theo text "Delete"/"Xóa".
+    OdooSelectors.BUTTON_DELETE: ".o_cp_action_menus .dropdown-item",
     OdooSelectors.BUTTON_ACTION: ".o_cp_action_menus button",
     OdooSelectors.SEARCH_INPUT: ".o_searchview_input",
     OdooSelectors.SEARCH_CLEAR: ".o_searchview_facet_remove",
@@ -95,18 +96,20 @@ SELECTORS_V17: dict[str, str] = {
     OdooSelectors.LIST_CELL: ".o_data_cell",
     OdooSelectors.LIST_CHECKBOX: ".o_list_record_selector input",
     OdooSelectors.FORM_FIELD: ".o_field_widget",
-    OdooSelectors.FORM_TAB: ".o_notebook_tabs .nav-link",
+    # Odoo 17 dùng Bootstrap 5: tab notebook nằm trong .o_notebook
+    OdooSelectors.FORM_TAB: ".o_notebook .nav-link",
     OdooSelectors.KANBAN_CARD: ".o_kanban_record",
     OdooSelectors.KANBAN_COLUMN: ".o_kanban_group",
-    OdooSelectors.MODAL: ".modal-dialog, .o_dialog",
-    OdooSelectors.NOTIFICATION: ".o_notification, .toast",
-    OdooSelectors.LOADING: ".o_loading, .o_web_client_loading",
+    OdooSelectors.MODAL: ".modal-dialog",
+    OdooSelectors.NOTIFICATION: ".o_notification",
+    # Cần xác nhận lại trên trang đang chờ: Odoo 17 có thể dùng .o_blockUI hoặc .o_loading_indicator
+    OdooSelectors.LOADING: ".o_blockUI, .o_loading_indicator",
     OdooSelectors.BREADCRUMB: ".o_breadcrumb",
     OdooSelectors.STATUSBAR: ".o_statusbar_buttons",
-    OdooSelectors.DROPDOWN: ".o_dropdown_menu, .dropdown-menu",
-    OdooSelectors.MANY2ONE: ".o_field_many2one input, .o_field_widget[name] input",
-    OdooSelectors.BINARY_UPLOAD: ".o_form_binary_file, input[type='file']",
-    OdooSelectors.DATEPICKER: ".o_datepicker_input, .o_datepicker",
+    OdooSelectors.DROPDOWN: ".dropdown-menu.show, .o_dropdown_menu",
+    OdooSelectors.MANY2ONE: ".o_field_many2one input",
+    OdooSelectors.BINARY_UPLOAD: ".o_field_binary_file input[type='file'], .o_form_binary_file",
+    OdooSelectors.DATEPICKER: ".o_datepicker_input",
 }
 
 SELECTORS_V18: dict[str, str] = {
