@@ -1,153 +1,90 @@
-import asyncio
-from playwright.async_api import async_playwright
+"""Create a test contact (res.partner) on Odoo 17 through the UI.
+
+Credentials and server come from environment variables (see conftest.py):
+    ODOO_URL, ODOO_USER, ODOO_PASSWORD, ODOO_DB, ODOO_VERSION
+
+Run with:
+    pytest tests/test_create_partner.py -vvs -x
+"""
+
+import os
+import time
+
 from odoo_playwright.ui_async import AsyncOdooUI
 
-async def main():
-    async with async_playwright() as p:
-        print("📍 Step 1: Launching Chrome...")
-        browser = await p.chromium.launch(headless=False)
-        print("✅ Chrome opened\n")
-        await asyncio.sleep(1)
 
-        print("📍 Step 2: Creating new page...")
-        page = await browser.new_page()
-        print("✅ Page created\n")
-        await asyncio.sleep(1)
+async def test_create_partner(async_odoo_ui: AsyncOdooUI):
+    ui = async_odoo_ui
+    # Unique name per run so each execution creates a new, identifiable record
+    partner_name = f"Test Partner {int(time.time())}"
 
-        print("📍 Step 3: Navigating to login page...")
-        ui = AsyncOdooUI(page, base_url="https://integration.cc1.vn/", version=17)
-        await ui.login("thuanlieu@xboss.com", "Thuanlt@2016", "integration_260803")
-        print("✅ Logged in\n")
-        await asyncio.sleep(1)
+    os.makedirs("screenshots", exist_ok=True)
 
-        print("📍 Step 4: Navigating to Sale Order form...")
-        await ui.navigate("/web?debug=1#id=10417&cids=1&menu_id=1224&action=2157&model=sale.order&view_type=form")
-        print("✅ Sale Order form loaded\n")
-        await asyncio.sleep(2)
+    # Open the Contacts (res.partner) screen. This server uses a custom theme with no
+    # standard app grid, so we use the direct URL from the browser. After login the
+    # page is already on /web, so a hash-only change may not reload Odoo: reload it.
+    await ui.navigate("/web#action=660&model=res.partner&view_type=kanban&menu_id=482")
+    await ui.page.reload()
+    await ui.wait.for_all()
+    try:
+        await ui.page.wait_for_selector(".o_list_view, .o_kanban_view", timeout=15000)
+    except Exception:
+        # Fallback: command palette (Ctrl+K), by Vietnamese or English app name
+        for app_name in ("Liên hệ", "Contacts"):
+            try:
+                await ui.go_to_app(app_name)
+                await ui.page.wait_for_selector(".o_list_view, .o_kanban_view", timeout=15000)
+                break
+            except Exception:
+                continue
 
-        # Extra wait to ensure form is fully loaded
-        print("📍 Waiting for form to fully load...")
-        await ui.wait.for_all()
-        await asyncio.sleep(2)
-        print("✅ Form fully loaded\n")
+    # Screenshot + URL to confirm which screen the test is on before creating anything
+    await ui.page.screenshot(path="screenshots/contacts_before_new.png")
+    print(f"\nCurrent URL before creating: {ui.page.url}")
+    # Strict guard: never create anything unless we are really on the res.partner screen
+    assert "res.partner" in ui.page.url, (
+        f"Not on res.partner screen (URL: {ui.page.url}), see screenshots/contacts_before_new.png"
+    )
 
-        # Debug: take screenshot to see the form
-        await ui.take_screenshot("/tmp/form_opened.png")
-        print("📸 Screenshot saved to /tmp/form_opened.png\n")
-
-        # Debug: detailed page inspection
-        print("📍 Deep inspecting form structure...")
-        page_info = await ui.page.evaluate("""
-            () => {
-                const info = {
-                    url: window.location.href,
-                    iframes: document.querySelectorAll('iframe').length,
-                    hasForm: !!document.querySelector('form'),
-                    formContent: {
-                        allInputs: document.querySelectorAll('input').length,
-                        allTextareas: document.querySelectorAll('textarea').length,
-                        allSelects: document.querySelectorAll('select').length,
-                        namedInputs: Array.from(document.querySelectorAll('input[name]')).map(el => el.name),
-                        fieldWidgets: Array.from(document.querySelectorAll('.o_field_widget')).map(el => ({
-                            dataField: el.dataset.field,
-                            dataFieldName: el.dataset.fieldName,
-                            class: el.className.substring(0, 100)
-                        })),
-                        many2oneFields: Array.from(document.querySelectorAll('.o_field_many2one')).map(el => ({
-                            dataField: el.dataset.field,
-                            hasInput: !!el.querySelector('input')
-                        }))
-                    }
-                };
-                return info;
-            }
-        """)
-        print(f"Page info: {page_info}\n")
-
-        # Debug: get HTML of the form area to see actual structure
-        print("📍 Getting form HTML to inspect structure...")
-        form_html = await ui.page.evaluate("""
-            () => {
-                // Try multiple possible form containers
-                const formContainer =
-                    document.querySelector('.o_form_view') ||
-                    document.querySelector('.o_form_container') ||
-                    document.querySelector('form') ||
-                    document.querySelector('.o_action_manager') ||
-                    document.querySelector('main');
-
-                if (!formContainer) return "No form container found";
-
-                // Return first 3000 chars of innerHTML to see structure
-                return formContainer.innerHTML.substring(0, 3000);
-            }
-        """)
-        print(f"Form HTML (first 3000 chars):\n{form_html}\n")
-
-        # Debug: inspect field widgets structure more carefully
-        print("📍 Inspecting field widget structure in detail...")
-        field_structure = await ui.page.evaluate("""
-            () => {
-                const widgets = Array.from(document.querySelectorAll('.o_field_widget')).slice(0, 5);
-                return widgets.map(el => ({
-                    classes: el.className,
-                    dataField: el.dataset.field,
-                    dataFieldName: el.dataset.fieldName,
-                    dataName: el.dataset.name,
-                    attributes: Array.from(el.attributes).map(a => `${a.name}=${a.value}`).join(', '),
-                    childInputs: Array.from(el.querySelectorAll('input')).map(inp => ({
-                        type: inp.type,
-                        name: inp.name,
-                        class: inp.className,
-                        id: inp.id,
-                        placeholder: inp.placeholder
-                    }))
-                }));
-            }
-        """)
-        print(f"First 5 field widgets structure: {field_structure}\n")
-
-        # Debug: inspect available fields
-        print("📍 Inspecting available fields on the form...")
-        field_names = await ui.page.evaluate("""
-            () => {
-                const fields = [];
-                // Get all inputs with their parent context
-                document.querySelectorAll('input').forEach(el => {
-                    if (el.offsetParent !== null) {  // visible only
-                        const parent = el.closest('.o_field_widget');
-                        const dataField = parent?.dataset.field || el.dataset.field || el.name || 'unknown';
-                        fields.push({
-                            type: 'input',
-                            fieldName: dataField,
-                            inputType: el.type,
-                            parentClass: parent?.className || 'no parent'
-                        });
-                    }
-                });
-                return fields.slice(0, 20);  // first 20
-            }
-        """)
-        print(f"Available fields (first 20): {field_names}\n")
-
-        print("📍 Step 6: Filling partner_id field...")
+    # Create a new contact and fill the name
+    # Click the New button (kanban or list), then wait for the form to open
+    all_buttons = ui.page.locator("button.o_list_button_add, .o-kanban-button-new")
+    print(f"New buttons in DOM: {await all_buttons.count()}")
+    visible_button = ui.page.locator(
+        "button.o_list_button_add:visible, .o-kanban-button-new:visible"
+    ).first
+    try:
+        # Prefer the visible button (the DOM may also hold hidden duplicates)
+        await visible_button.click(timeout=10000)
+    except Exception:
+        # Fallback: the button exists but the theme hides it, trigger its click handler directly
         try:
-            await ui.fill_field("partner_id", "My New Partner")
-        except Exception as e:
-            print(f"❌ Error filling partner_id: {e}")
-            # Try alternative field names
-            print("📍 Trying alternative field names...")
-            await asyncio.sleep(1)
-        print("✅ Name filled\n")
-        await asyncio.sleep(2)
+            await all_buttons.first.dispatch_event("click")
+        except Exception:
+            os.makedirs("screenshots", exist_ok=True)
+            await ui.page.screenshot(path="screenshots/create_partner_no_new_button.png")
+            raise
+    await ui.page.wait_for_selector(".o_form_view", timeout=15000)
+    await ui.wait.for_all()
+    await ui.fill_field("name", partner_name)
 
-        print("📍 Step 7: Saving partner...")
-        await ui.click_save()
-        print("✅ Partner saved\n")
-        await asyncio.sleep(2)
+    # Blur the field so Odoo marks the record dirty and shows the Save button
+    await ui.page.keyboard.press("Tab")
+    await ui.wait.for_all()
+    await ui.page.screenshot(path="screenshots/partner_before_save.png")
 
-        await browser.close()
-        print("✅ Test completed!")
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    # Save: in Odoo 17 the save button only appears once the record is dirty
+    save_button = ui.page.locator(".o_form_button_save:visible").first
+    try:
+        await save_button.click(timeout=10000)
+    except Exception:
+        # Fallbacks: the theme may hide the button, so trigger it directly, then Alt+S
+        try:
+            await ui.page.locator(".o_form_button_save").first.dispatch_event("click")
+        except Exception:
+            await ui.page.keyboard.press("Alt+s")
+    await ui.wait.for_all()
+    saved_name = await ui.get_field_value("name")
+    assert saved_name == partner_name, (
+        f"Expected saved partner name '{partner_name}', got '{saved_name}'"
+    )
