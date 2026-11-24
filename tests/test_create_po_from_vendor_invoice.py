@@ -2,8 +2,10 @@
 
 Invoice PDFs are taken from, in order: ``--invoice <file|folder>`` (repeatable),
 ``$VENDOR_INVOICE_PATH``, an interactive prompt on the terminal, then the folder
-``tests/data/vendor_invoices``. Each PDF is read for its vendor and product lines,
-then the RFQ is built in the Odoo UI and confirmed into a PO.
+``tests/data/vendor_invoices``. Each PDF is read for its vendor and product lines.
+All invoices of one vendor go into ONE RFQ, built in the Odoo UI and confirmed into a PO.
+The goods are then received and billed per invoice (oldest first): one receipt dated on
+the invoice date and one vendor bill carrying that invoice's number, serial and date.
 
 Prerequisites: a live Odoo 17 (see CLAUDE.md for ODOO_* variables), ``pdfplumber``
 installed, and the vendor and products from the invoice already existing in Odoo.
@@ -16,12 +18,19 @@ from __future__ import annotations
 import os
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 import pytest
 
 from odoo_playwright.ui_async import AsyncOdooUI
 
+from .po_completion import (
+    BillData,
+    InvoicePart,
+    complete_purchase_order,
+    complete_purchase_order_by_invoice,
+)
 from .vendor_invoice_parser import VendorInvoice, parse_number, parse_vendor_invoice
 
 DEFAULT_INVOICE_DIR = Path(__file__).parent / "data" / "vendor_invoices"
@@ -98,6 +107,18 @@ def test_parse_number_rejects_text() -> None:
 )
 def test_tax_group_for(product_type: str, category: str, group: str) -> None:
     assert tax_group_for(product_type, category) == group
+
+
+def test_group_invoices_by_vendor() -> None:
+    def inv(vendor: str, day: int | None) -> VendorInvoice:
+        return VendorInvoice(source="x.pdf", vendor=vendor,
+                             invoice_date=date(2026, 10, day) if day else None)
+
+    a2, a1, b, a3 = inv("CTY A", 20), inv("Cty  a", 5), inv("CTY B", 1), inv("CTY A", None)
+    groups = group_invoices_by_vendor(
+        [(Path("a2.pdf"), a2), (Path("a1.pdf"), a1), (Path("b.pdf"), b), (Path("a3.pdf"), a3)]
+    )
+    assert [[p.name for p, _ in g] for g in groups] == [["a1.pdf", "a2.pdf", "a3.pdf"], ["b.pdf"]]
 
 
 # --------------------------------------------------------------------------
@@ -205,6 +226,8 @@ async def _pick_autocomplete(ui: AsyncOdooUI, input_locator, text: str, what: st
 async def _debug_dump(ui: AsyncOdooUI, tag: str) -> str:
     """Screenshot + visible buttons, so a failure shows what the page really looked like."""
     page = ui.page
+    if page.is_closed():
+        return "page is closed (browser crashed or was closed)"
     Path("screenshots").mkdir(exist_ok=True)
     shot = Path("screenshots") / f"{tag}.png"
     await page.screenshot(path=str(shot), full_page=True)
@@ -252,7 +275,10 @@ async def _open_new_rfq_form(ui: AsyncOdooUI, pdf_path: Path) -> None:
 async def _shot(ui: AsyncOdooUI, name: str) -> None:
     """Progress screenshot (screenshots/step_<name>.png) to see where a run gets stuck."""
     Path("screenshots").mkdir(exist_ok=True)
-    await ui.page.screenshot(path=str(Path("screenshots") / f"step_{name}.png"), full_page=True)
+    try:
+        await ui.page.screenshot(path=str(Path("screenshots") / f"step_{name}.png"))
+    except Exception as exc:  # a progress screenshot must never fail the run
+        print(f"  (screenshot {name} failed: {type(exc).__name__}: {exc})")
 
 
 async def _save_rfq(ui: AsyncOdooUI) -> None:
@@ -643,9 +669,8 @@ async def _fill_analytic(ui: AsyncOdooUI) -> None:
     if await cell.count() == 0:
         print("  analytic: no 'Analytic Distribution' column on the lines, skipped")
         return
-    if await cell.locator(".o_tag").count():
-        print("  analytic: already set by default")
-        return
+    # Even with tags already there, open the popup: a default may cover only some of the
+    # mandatory plans (P04375 had only "Loại hình"); filled plan columns are kept as they are.
     await cell.click()
     popup = page.locator(
         ".analytic_distribution_popup, .o_popover:has(input.o-autocomplete--input)"
@@ -731,24 +756,30 @@ async def _add_line(
 # --------------------------------------------------------------------------
 # Main scenario
 # --------------------------------------------------------------------------
-@pytest.mark.integration
-async def test_create_po_from_vendor_invoice(
-    invoice_pdfs: list[Path], async_odoo_ui: AsyncOdooUI, odoo_config
-) -> None:
-    for pdf_path in invoice_pdfs:
-        print(f"\n== {pdf_path.name}")
-        try:
-            await _create_po_from_invoice(async_odoo_ui, odoo_config, pdf_path)
-        except Exception:
-            print("\n--- page state at failure ---")
-            print(await _debug_dump(async_odoo_ui, f"fail_{pdf_path.stem}"))
-            raise
+Invoice = tuple[Path, VendorInvoice]
 
 
-async def _create_po_from_invoice(ui: AsyncOdooUI, odoo_config, pdf_path: Path) -> None:
-    page = ui.page
+def _vendor_key(name: str) -> str:
+    return re.sub(r"\s+", " ", name).strip().lower()
 
-    invoice: VendorInvoice = parse_vendor_invoice(pdf_path)
+
+def group_invoices_by_vendor(invoices: list[Invoice]) -> list[list[Invoice]]:
+    """One group per vendor (first-seen order), each sorted by invoice date then file name.
+
+    All invoices of a vendor go into one PO; they are received and billed oldest first,
+    because CC1 refuses a bill dated before its receipt.
+    """
+    groups: dict[str, list[Invoice]] = {}
+    for path, invoice in invoices:
+        groups.setdefault(_vendor_key(invoice.vendor), []).append((path, invoice))
+    return [
+        sorted(group, key=lambda pi: (pi[1].invoice_date or date.max, pi[0].name))
+        for group in groups.values()
+    ]
+
+
+def _check_invoice(pdf_path: Path, invoice: VendorInvoice) -> None:
+    """The PDF was read completely: vendor, lines, and line sums match the printed totals."""
     assert invoice.vendor, f"{pdf_path.name}: could not read the vendor name"
     assert invoice.lines, f"{pdf_path.name}: no product lines found (check the table header names)"
     for line in invoice.lines:
@@ -757,39 +788,79 @@ async def _create_po_from_invoice(ui: AsyncOdooUI, odoo_config, pdf_path: Path) 
                 f"{pdf_path.name}: {line.name!r}: {line.qty} x {line.price} "
                 f"!= line amount {line.amount}"
             )
-    expected_untaxed = sum(line.qty * line.price for line in invoice.lines)
     if invoice.subtotal is not None:
-        assert expected_untaxed == pytest.approx(invoice.subtotal, abs=1), (
-            f"{pdf_path.name}: parsed lines sum to {expected_untaxed}, "
+        untaxed = sum(line.qty * line.price for line in invoice.lines)
+        assert untaxed == pytest.approx(invoice.subtotal, abs=1), (
+            f"{pdf_path.name}: parsed lines sum to {untaxed}, "
             f"invoice subtotal says {invoice.subtotal}"
         )
+
+
+@pytest.mark.integration
+async def test_create_po_from_vendor_invoice(
+    invoice_pdfs: list[Path], async_odoo_ui: AsyncOdooUI, odoo_config, request
+) -> None:
+    invoices = []
+    for pdf_path in invoice_pdfs:
+        invoice = parse_vendor_invoice(pdf_path)
+        _check_invoice(pdf_path, invoice)
+        invoices.append((pdf_path, invoice))
+    for group in group_invoices_by_vendor(invoices):
+        names = [p.name for p, _ in group]
+        print(f"\n== {group[0][1].vendor}: {len(group)} invoice(s) -> 1 PO: {names}")
+        try:
+            await _create_po_from_invoices(async_odoo_ui, odoo_config, group, request.config)
+        except BaseException as exc:  # pytest.fail() raises a BaseException subclass
+            print(f"\n--- failed: {type(exc).__name__}: {exc}")
+            print("--- page state at failure ---")
+            try:
+                print(await _debug_dump(async_odoo_ui, f"fail_{group[0][0].stem}"))
+            except Exception as dump_exc:  # the page may be gone (crash, closed browser)
+                print(f"(no page dump: {type(dump_exc).__name__}: {dump_exc})")
+            raise
+
+
+async def _create_po_from_invoices(
+    ui: AsyncOdooUI, odoo_config, invoices: list[Invoice], config: pytest.Config
+) -> None:
+    """One PO holding the lines of every invoice of one vendor, then receipt + bill per invoice."""
+    page = ui.page
+    vendor = invoices[0][1].vendor
+    # Every invoice line, in order, with the VAT rate printed on its own invoice.
+    lines = [
+        (k, line, line.tax_rate if line.tax_rate is not None else invoice.vat_rate)
+        for k, (_, invoice) in enumerate(invoices)
+        for line in invoice.lines
+    ]
+    expected_untaxed = sum(line.qty * line.price for _, line, _ in lines)
 
     # 1. Open Purchase > Orders > Requests for Quotation and start a new RFQ.
     await page.goto(f"{odoo_config.base_url}/web#action=purchase.purchase_rfq&view_type=list")
     await ui.wait.for_all()
-    await _open_new_rfq_form(ui, pdf_path)
+    await _open_new_rfq_form(ui, invoices[0][0])
 
     # 2. Vendor.
     # The vendor must be the one named on the invoice: no "first result" fallback.
     vendor_input = ui.get_field("partner_id")
     await vendor_input.click()
-    await vendor_input.fill(invoice.vendor)
+    await vendor_input.fill(vendor)
     items = page.locator(AUTOCOMPLETE_ITEM)
     try:
         await items.first.wait_for(state="visible", timeout=10000)
     except Exception:
-        pytest.fail(f"Vendor {invoice.vendor!r} not found in Odoo (no suggestions)")
+        pytest.fail(f"Vendor {vendor!r} not found in Odoo (no suggestions)")
     await _wait_dropdown_loaded(page)
+
     def norm(s: str) -> str:
         # Odoo shows "Name ‒ <tax id>" in the dropdown: drop that suffix before comparing.
         s = re.sub(r"\s+[‒–—-]\s*[\d-]+\s*$", "", s)
         return re.sub(r"\s+", " ", s).strip().lower()
 
     offered = [" ".join(t.split()) for t in await items.all_inner_texts()]
-    exact = [i for i, t in enumerate(offered) if norm(t) == norm(invoice.vendor)]
+    exact = [i for i, t in enumerate(offered) if norm(t) == norm(vendor)]
     if not exact:
         pytest.fail(
-            f"Vendor {invoice.vendor!r} from the invoice does not exist in Odoo "
+            f"Vendor {vendor!r} from the invoice does not exist in Odoo "
             f"(exact name). Odoo offered: {offered}"
         )
     await items.nth(exact[0]).click()
@@ -797,15 +868,17 @@ async def _create_po_from_invoice(ui: AsyncOdooUI, odoo_config, pdf_path: Path) 
     await ui.wait.for_all()
     await _shot(ui, "1_vendor")
 
-    # Vendor Reference carries the supplier's invoice number for traceability.
-    if invoice.invoice_no:
+    # Vendor Reference carries the supplier's invoice numbers for traceability.
+    numbers = [inv.invoice_no for _, inv in invoices if inv.invoice_no]
+    if numbers:
         ref = page.locator(".o_field_widget[name='partner_ref'] input").first
         if await ref.count() > 0:
-            await ref.fill(invoice.invoice_no)
+            await ref.fill(", ".join(numbers))
 
-    # 3. Product lines.
-    for i, line in enumerate(invoice.lines, start=1):
-        rate = line.tax_rate if line.tax_rate is not None else invoice.vat_rate
+    # 3. Product lines of every invoice.
+    for i, (k, line, rate) in enumerate(lines, start=1):
+        if len(invoices) > 1:
+            print(f"  line {i}: invoice {invoices[k][0].name}")
         if rate is None:
             print(f"  line {i}: no VAT rate on the invoice, keeping Odoo's default taxes")
         await _add_line(ui, i, line.name, line.qty, line.price, rate)
@@ -820,18 +893,21 @@ async def _create_po_from_invoice(ui: AsyncOdooUI, odoo_config, pdf_path: Path) 
     await _save_rfq(ui)
     await _shot(ui, "3_saved")
     rows = page.locator(".o_field_widget[name='order_line'] .o_data_row")
-    assert await rows.count() == len(invoice.lines)
+    assert await rows.count() == len(lines)
     assert await _lines_subtotal(ui) == pytest.approx(expected_untaxed, abs=1)
-    if invoice.total is not None:
+    totals = [inv.total for _, inv in invoices]
+    if all(t is not None for t in totals):
+        # Odoo rounds VAT per line: allow 1 đồng per invoice.
+        expected_total = sum(totals)
         form_text = await page.locator(".o_form_view").inner_text()
-        numbers = []
+        found = []
         for raw in re.findall(r"\d[\d.,]*", form_text):
             try:
-                numbers.append(parse_number(raw))
+                found.append(parse_number(raw))
             except ValueError:
                 pass
-        assert any(abs(n - invoice.total) <= 1 for n in numbers), (
-            f"{pdf_path.name}: invoice total {invoice.total} not found on the saved RFQ "
+        assert any(abs(n - expected_total) <= len(invoices) for n in found), (
+            f"invoice total {expected_total} not found on the saved RFQ "
             "(taxes differ from the invoice?)"
         )
 
@@ -884,5 +960,66 @@ async def _create_po_from_invoice(ui: AsyncOdooUI, odoo_config, pdf_path: Path) 
         "('to approve' means the Double Validation threshold was exceeded)"
     )
 
-    # Confirmed orders expose the Receipt smart button: the PO really went through.
-    assert await page.locator(".oe_button_box [name='action_view_picking']").count() > 0
+    # Confirmed orders with goods get a receipt. Checked over RPC: CC1's smart-button
+    # markup does not match `.oe_button_box [name=action_view_picking]`.
+    po_id = int(re.search(r"[#&?]id=(\d+)", page.url).group(1))
+    po = (await _rpc(page, "purchase.order", "read", [[po_id]],
+                     fields=["name", "incoming_picking_count", "order_line"]))[0]
+    print(f"  PO {po['name']} (id {po_id}) confirmed, receipts: {po['incoming_picking_count']}")
+    assert po["incoming_picking_count"] > 0, f"{po['name']}: no receipt after confirmation"
+
+    # 6. Receive the goods, then bill (and optionally pay) with the invoice's data.
+    if config.getoption("--stop-at-po"):
+        print("  --stop-at-po: receipt and bill skipped")
+        return
+    do_pay = config.getoption("--pay")
+    if len(invoices) == 1:
+        await complete_purchase_order(
+            ui, po_id, bill_data_from(invoices[0][1]), _fill_analytic, do_pay=do_pay
+        )
+        return
+
+    # Several invoices: one receipt and one bill per invoice, so every bill carries its
+    # own number, serial and date and holds only its own lines.
+    po_lines = await _rpc(page, "purchase.order.line", "read", [po["order_line"]],
+                          fields=["product_qty", "price_unit"])
+    by_id = {pl["id"]: pl for pl in po_lines}
+    po_lines = [by_id[i] for i in po["order_line"] if i in by_id]
+    assert len(po_lines) == len(lines), f"{po['name']}: {len(po_lines)} lines, expected {len(lines)}"
+    for (_, line, _), pl in zip(lines, po_lines):
+        assert pl["product_qty"] == pytest.approx(line.qty, abs=1e-3), (
+            f"{po['name']}: PO line order differs from the invoices ({pl} vs {line})"
+        )
+    parts = []
+    for k, (_, invoice) in enumerate(invoices):
+        qty: dict[int, float] = {}
+        for (owner, line, _), pl in zip(lines, po_lines):
+            if owner == k:
+                qty[pl["id"]] = qty.get(pl["id"], 0.0) + line.qty
+        parts.append(InvoicePart(bill_data_from(invoice), qty))
+    bill_ids = await complete_purchase_order_by_invoice(
+        ui, po_id, parts, _fill_analytic, do_pay=do_pay
+    )
+
+    # Every bill matches its own invoice.
+    bills = await _rpc(page, "account.move", "read", [bill_ids],
+                       fields=["name", "ref", "state", "amount_untaxed", "amount_total"])
+    for (pdf_path, invoice), move in zip(invoices, bills):
+        print(f"  {pdf_path.name} -> bill {move['name']}: untaxed {move['amount_untaxed']:,.0f}, "
+              f"total {move['amount_total']:,.0f}")
+        assert move["state"] == "posted"
+        if invoice.subtotal is not None:
+            assert move["amount_untaxed"] == pytest.approx(invoice.subtotal, abs=1), pdf_path.name
+        if invoice.total is not None:
+            assert move["amount_total"] == pytest.approx(invoice.total, abs=1), pdf_path.name
+
+
+def bill_data_from(invoice: VendorInvoice) -> BillData:
+    """Vendor bill fields taken from the parsed invoice PDF."""
+    names = ", ".join(line.name for line in invoice.lines)
+    return BillData(
+        ref=invoice.invoice_no or "",
+        serial=invoice.serial,
+        invoice_date=invoice.invoice_date,
+        description=f"Mua {names} theo HĐ {invoice.serial or ''} số {invoice.invoice_no or ''}".strip(),
+    )
