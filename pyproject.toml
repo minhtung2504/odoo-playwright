@@ -39,6 +39,9 @@ dev = [
 mcp = [
     "mcp>=2.0.0",
 ]
+pdf = [
+    "pdfplumber>=0.10.0",
+]
 
 [project.scripts]
 odoo-playwright-mcp = "odoo_playwright.mcp_server:main"

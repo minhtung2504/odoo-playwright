@@ -11,6 +11,16 @@ from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_
 from odoo_playwright.testcase import OdooConfig
 from odoo_playwright.ui import OdooUI
 from odoo_playwright.ui_async import AsyncOdooUI
+from tests.support import OdooData
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--invoice",
+        action="append",
+        default=[],
+        help="Vendor invoice PDF file or folder (repeatable) for test_create_po_from_vendor_invoice.",
+    )
 
 
 def get_config() -> OdooConfig:
@@ -141,6 +151,14 @@ async def async_odoo_ui(async_page, odoo_config: OdooConfig) -> AsyncOdooUI:
         database=odoo_config.database,
     )
     yield ui
+
+
+@pytest.fixture
+async def odoo_data(async_odoo_ui: AsyncOdooUI):
+    """RPC as the logged-in user; records created through it are deleted after the test."""
+    data = OdooData(async_odoo_ui)
+    yield data
+    await data.cleanup()
 
 
 @pytest.fixture
