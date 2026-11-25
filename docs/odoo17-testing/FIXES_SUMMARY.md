@@ -294,7 +294,7 @@ nano src/odoo_playwright/ui_async.py
 pytest tests/test_verify_odoo17_functions.py::TestAsyncOdooUI_FormActions::test_click_delete -vvs
 
 # 6. Test toàn group
-./run_odoo17_tests.sh forms
+./scripts/run_odoo17_tests.sh forms
 
 # 7. Commit
 git add src/odoo_playwright/ui_async.py
@@ -329,7 +329,7 @@ Sau khi fix tất cả:
 - [ ] fill_field() test passes
 - [ ] go_to_tab() test passes
 - [ ] search() test passes
-- [ ] Full test suite passes: `./run_odoo17_tests.sh all`
+- [ ] Full test suite passes: `./scripts/run_odoo17_tests.sh all`
 - [ ] No regressions in other tests
 
 ---

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Odoo 17 test runner with result analysis and reporting."""
 
+import os
 import subprocess
 import sys
 import json
@@ -158,8 +159,8 @@ class TestRunner:
             print(f"  {i:2}. {name}")
 
         print("\nUsage:")
-        print("  python test_runner.py <group_name>")
-        print("  python test_runner.py all")
+        print("  python scripts/test_runner.py <group_name>")
+        print("  python scripts/test_runner.py all")
         print()
 
     def generate_report(self) -> None:
@@ -184,7 +185,9 @@ class TestRunner:
 
 def main():
     """Main entry point."""
-    runner = TestRunner(verbose="--verbose" in sys.argv or "-v" in sys.argv)
+    # Run from the repository root so the tests/ paths in TEST_GROUPS resolve.
+    os.chdir(Path(__file__).resolve().parent.parent)
+    runner =TestRunner(verbose="--verbose" in sys.argv or "-v" in sys.argv)
 
     if len(sys.argv) < 2:
         runner.list_groups()

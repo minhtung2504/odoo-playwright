@@ -23,15 +23,15 @@ export SLOW_MO=500         # 500ms pause between actions
 
 ```bash
 # Quick validation (navigation only)
-./run_odoo17_tests.sh quick
+./scripts/run_odoo17_tests.sh quick
 
 # Run specific test groups
-./run_odoo17_tests.sh forms        # Form operations
-./run_odoo17_tests.sh list         # List view operations
-./run_odoo17_tests.sh modals       # Modal & notification tests
+./scripts/run_odoo17_tests.sh forms        # Form operations
+./scripts/run_odoo17_tests.sh list         # List view operations
+./scripts/run_odoo17_tests.sh modals       # Modal & notification tests
 
 # Run all tests
-./run_odoo17_tests.sh all
+./scripts/run_odoo17_tests.sh all
 
 # Detailed output
 pytest tests/test_verify_odoo17_functions.py -vvs
@@ -255,7 +255,7 @@ document.querySelectorAll(".dropdown-item:contains('Delete')").length
 
 1. **Review** the detailed issues in `ODOO17_FIXES_NEEDED.md`
 2. **Edit** `src/odoo_playwright/ui_async.py` with fixes
-3. **Test** with: `./run_odoo17_tests.sh all`
+3. **Test** with: `./scripts/run_odoo17_tests.sh all`
 4. **Verify** all tests pass
 
 ---

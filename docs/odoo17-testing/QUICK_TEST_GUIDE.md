@@ -23,13 +23,13 @@ export SLOW_MO=500
 ### Option A: Easy Script (Recommended)
 ```bash
 # Quick smoke test
-./run_odoo17_tests.sh quick
+./scripts/run_odoo17_tests.sh quick
 
 # Test form operations  
-./run_odoo17_tests.sh forms
+./scripts/run_odoo17_tests.sh forms
 
 # Test all
-./run_odoo17_tests.sh all
+./scripts/run_odoo17_tests.sh all
 ```
 
 ### Option B: Direct pytest
@@ -259,7 +259,7 @@ export ODOO_PASSWORD="password"
 export HEADLESS=false
 
 # Run quick validation
-./run_odoo17_tests.sh quick
+./scripts/run_odoo17_tests.sh quick
 # Should see:
 # ✅ test_navigate_to_path PASSED
 # ✅ test_get_current_model PASSED
@@ -269,7 +269,7 @@ export HEADLESS=false
 # Edit src/odoo_playwright/ui_async.py
 
 # Verify fixes
-./run_odoo17_tests.sh all
+./scripts/run_odoo17_tests.sh all
 # Should see all tests passing
 ```
 

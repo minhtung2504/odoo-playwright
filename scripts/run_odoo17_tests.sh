@@ -3,6 +3,9 @@
 
 set -e
 
+# Run from the repository root so the tests/ paths below resolve.
+cd "$(dirname "$0")/.."
+
 # Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -19,7 +22,7 @@ if [ -z "$ODOO_URL" ]; then
     echo "  export ODOO_USER='username'"
     echo "  export ODOO_PASSWORD='password'"
     echo "  export ODOO_DB='database'"
-    echo "  ./run_odoo17_tests.sh"
+    echo "  ./scripts/run_odoo17_tests.sh"
     exit 1
 fi
 

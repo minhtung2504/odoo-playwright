@@ -10,12 +10,13 @@ A complete test suite with **70+ tests** organized into **12 test classes** to v
 odoo-playwright/
 ├── tests/
 │   └── test_verify_odoo17_functions.py    ← MAIN TEST SUITE (70+ tests)
-├── TESTING_ODOO17.md                      ← Full documentation
-├── QUICK_TEST_GUIDE.md                    ← Quick start guide
-├── ODOO17_FIXES_NEEDED.md                 ← Detailed issue analysis
-├── TEST_SUITE_SUMMARY.md                  ← This file
-├── run_odoo17_tests.sh                    ← Easy test runner script
-├── test_runner.py                         ← Python test runner
+├── docs/odoo17-testing/
+│   ├── TESTING_ODOO17.md                  ← Full documentation
+│   ├── QUICK_TEST_GUIDE.md                ← Quick start guide
+│   └── TEST_SUITE_SUMMARY.md              ← This file
+├── scripts/
+│   ├── run_odoo17_tests.sh                ← Easy test runner script
+│   └── test_runner.py                     ← Python test runner
 └── pytest.ini                             ← Pytest configuration
 ```
 
@@ -31,7 +32,7 @@ export SLOW_MO=500
 
 # 2. Run tests
 cd /Users/mac/Documents/Code/odoo-playwright
-./run_odoo17_tests.sh quick
+./scripts/run_odoo17_tests.sh quick
 
 # 3. See results
 # ✅ = Function works in Odoo 17
@@ -85,7 +86,7 @@ cd /Users/mac/Documents/Code/odoo-playwright
 ### Scenario 1: "I just want to know what's broken"
 
 ```bash
-./run_odoo17_tests.sh quick
+./scripts/run_odoo17_tests.sh quick
 # Takes 2-3 minutes, shows pass/fail for key functions
 ```
 
@@ -117,7 +118,7 @@ cd /Users/mac/Documents/Code/odoo-playwright
 ### Scenario 3: "I want a full test report"
 
 ```bash
-python test_runner.py all
+python scripts/test_runner.py all
 # Runs ALL test classes
 # Generates: test_report.json
 ```
@@ -125,7 +126,7 @@ python test_runner.py all
 ### Scenario 4: "I want to test just forms"
 
 ```bash
-./run_odoo17_tests.sh forms
+./scripts/run_odoo17_tests.sh forms
 # Tests FormActions + FieldOperations
 ```
 
@@ -133,18 +134,18 @@ python test_runner.py all
 
 ### Method 1: Shell Script (Easiest)
 ```bash
-./run_odoo17_tests.sh all
-./run_odoo17_tests.sh quick
-./run_odoo17_tests.sh forms
-./run_odoo17_tests.sh list
-./run_odoo17_tests.sh modals
+./scripts/run_odoo17_tests.sh all
+./scripts/run_odoo17_tests.sh quick
+./scripts/run_odoo17_tests.sh forms
+./scripts/run_odoo17_tests.sh list
+./scripts/run_odoo17_tests.sh modals
 ```
 
 ### Method 2: Python Test Runner
 ```bash
-python test_runner.py all          # All groups
-python test_runner.py Navigation   # Single group
-python test_runner.py list         # List available groups
+python scripts/test_runner.py all          # All groups
+python scripts/test_runner.py Navigation   # Single group
+python scripts/test_runner.py list         # List available groups
 ```
 
 ### Method 3: Direct pytest
@@ -298,7 +299,7 @@ export ODOO_USER="..."
 export ODOO_PASSWORD="..."
 
 # 2. Run tests
-./run_odoo17_tests.sh all
+./scripts/run_odoo17_tests.sh all
 
 # 3. See which functions work/fail
 # 4. Report results
@@ -307,7 +308,7 @@ export ODOO_PASSWORD="..."
 ### For Fixing Functions
 ```bash
 # 1. Run tests to see failures
-./run_odoo17_tests.sh all
+./scripts/run_odoo17_tests.sh all
 
 # 2. Read ODOO17_FIXES_NEEDED.md for details
 
@@ -316,7 +317,7 @@ export ODOO_PASSWORD="..."
 # 4. Run tests again to verify fix
 
 # 5. Check for regressions
-./run_odoo17_tests.sh all
+./scripts/run_odoo17_tests.sh all
 ```
 
 ### For Integration in CI/CD

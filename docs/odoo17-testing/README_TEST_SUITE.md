@@ -33,15 +33,15 @@ export SLOW_MO=500
 ### 2. Run Tests
 ```bash
 # Quick validation (2-3 min)
-./run_odoo17_tests.sh quick
+./scripts/run_odoo17_tests.sh quick
 
 # Full test suite (5-10 min)
-./run_odoo17_tests.sh all
+./scripts/run_odoo17_tests.sh all
 
 # Specific test group
-./run_odoo17_tests.sh forms
-./run_odoo17_tests.sh list
-./run_odoo17_tests.sh modals
+./scripts/run_odoo17_tests.sh forms
+./scripts/run_odoo17_tests.sh list
+./scripts/run_odoo17_tests.sh modals
 ```
 
 ### 3. See Results
@@ -129,7 +129,7 @@ export SLOW_MO=500
 
 ### For Quick Verification
 ```bash
-./run_odoo17_tests.sh quick
+./scripts/run_odoo17_tests.sh quick
 # 2-3 minutes
 # See overall status
 ```
@@ -157,7 +157,7 @@ pytest tests/test_verify_odoo17_functions.py::TestAsyncOdooUI_FormActions::test_
 
 ### For Full Test Run
 ```bash
-./run_odoo17_tests.sh all
+./scripts/run_odoo17_tests.sh all
 # 5-10 minutes
 # All tests across all categories
 ```
@@ -208,7 +208,7 @@ curl -I "$ODOO_URL/web"
 ### "I want to..."
 
 #### ...run tests quickly
-→ Use `./run_odoo17_tests.sh quick`
+→ Use `./scripts/run_odoo17_tests.sh quick`
 
 #### ...understand what's broken
 → Read `ODOO17_FIXES_NEEDED.md`
@@ -293,7 +293,7 @@ HEADLESS=false SLOW_MO=2000 pytest tests/test_verify_odoo17_functions.py -vvs
 - [ ] Can reach Odoo instance (`curl -I $ODOO_URL/web`)
 - [ ] Credentials work (tested in browser)
 - [ ] Python dependencies installed (`pip install -e .`)
-- [ ] Run quick tests: `./run_odoo17_tests.sh quick`
+- [ ] Run quick tests: `./scripts/run_odoo17_tests.sh quick`
 - [ ] Understand which tests fail
 - [ ] Read `ODOO17_FIXES_NEEDED.md` to understand why
 - [ ] Ready to start fixing!
@@ -414,7 +414,7 @@ Notes: _______________
 
 2. **Run quick test** (3 min)
    ```bash
-   ./run_odoo17_tests.sh quick
+   ./scripts/run_odoo17_tests.sh quick
    ```
 
 3. **Understand issues** (10 min)
@@ -429,7 +429,7 @@ Notes: _______________
 
 5. **Verify all fixed** (10 min)
    ```bash
-   ./run_odoo17_tests.sh all
+   ./scripts/run_odoo17_tests.sh all
    ```
 
 ---
@@ -473,7 +473,7 @@ cd /Users/mac/Documents/Code/odoo-playwright
 export ODOO_URL="https://integration.cc1.vn"
 export ODOO_USER="your_username"
 export ODOO_PASSWORD="your_password"
-./run_odoo17_tests.sh quick
+./scripts/run_odoo17_tests.sh quick
 ```
 
 Happy testing! 🚀

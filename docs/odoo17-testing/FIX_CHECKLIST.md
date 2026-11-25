@@ -12,7 +12,7 @@
 
 ## Initial Test Run
 
-- [ ] Run baseline tests: `./run_odoo17_tests.sh quick`
+- [ ] Run baseline tests: `./scripts/run_odoo17_tests.sh quick`
 - [ ] Document initial failure count
 - [ ] Review `ODOO17_FIXES_NEEDED.md`
 - [ ] Understand each issue before fixing
@@ -164,10 +164,10 @@ HEADLESS=false SLOW_MO=500 \
 pytest tests/test_verify_odoo17_functions.py::TestAsyncOdooUI_CLASSNAME::test_FUNCTIONNAME -vvs
 
 # 2. If it passes, run full test group
-./run_odoo17_tests.sh GROUPNAME
+./scripts/run_odoo17_tests.sh GROUPNAME
 
 # 3. If all pass, run full suite to check regressions
-./run_odoo17_tests.sh all
+./scripts/run_odoo17_tests.sh all
 
 # 4. Commit only if all tests pass
 git diff src/odoo_playwright/ui_async.py  # Review changes
@@ -180,7 +180,7 @@ git commit -m "Fix: descriptive message"
 ## Final Verification
 
 - [ ] All fixes committed with clear commit messages
-- [ ] Full test suite passes: `./run_odoo17_tests.sh all`
+- [ ] Full test suite passes: `./scripts/run_odoo17_tests.sh all`
 - [ ] No regressions in existing tests
 - [ ] Code review (if working with team)
 - [ ] Update CHANGELOG if applicable
