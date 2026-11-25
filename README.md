@@ -49,6 +49,7 @@ odoo-playwright/
 ├── scripts/                          run_odoo17_tests.sh, test_runner.py
 ├── skills/                           playwright-mcp.skill (không thuộc package)
 ├── screenshots/                      ảnh chụp khi test lỗi (gitignored)
+├── .env.example                      mẫu cấu hình kết nối Odoo (chép thành .env)
 └── pyproject.toml, pytest.ini, CLAUDE.md, LICENSE, MANIFEST.in
 ```
 
@@ -89,11 +90,40 @@ Nếu `Activate.ps1` báo *"running scripts is disabled on this system"*, chạy
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-Biến môi trường `$env:...` ([xem bên dưới](#cấu-hình-kết-nối-odoo)) chỉ có hiệu lực trong cửa sổ PowerShell đã đặt chúng. Mở cửa sổ mới thì phải đặt lại.
+Biến đặt bằng `$env:...` chỉ có hiệu lực trong cửa sổ PowerShell hiện tại. Để khỏi khai báo lại mỗi lần, hãy dùng file `.env` ([xem bên dưới](#cấu-hình-kết-nối-odoo)).
 
 ## Cấu hình kết nối Odoo
 
-Mọi test UI cần **một Odoo đang chạy**. Cấu hình bằng biến môi trường. File `.env` **không** được đọc tự động, nên phải export trong shell:
+Mọi test UI cần **một Odoo đang chạy**. Thông tin kết nối được đọc từ biến môi trường.
+
+### Cách khuyên dùng: file `.env` (khai báo một lần)
+
+Chép file mẫu rồi điền thông tin:
+
+```powershell
+Copy-Item .env.example .env      # PowerShell
+# cp .env.example .env           # bash
+notepad .env
+```
+
+```ini
+ODOO_URL=https://integration.cc1.vn
+ODOO_USER=ten-dang-nhap
+ODOO_PASSWORD=mat-khau
+ODOO_DB=ten-database
+ODOO_VERSION=17
+HEADLESS=false
+```
+
+Mỗi lần chạy, `pytest` tự đọc file `.env` ở thư mục gốc repo (code nằm trong `tests/conftest.py`).
+
+- File `.env` đã nằm trong `.gitignore`, nên mật khẩu không bị commit. **Đừng** ghi mật khẩu vào `.env.example`.
+- Biến đã đặt trong shell (`$env:`, `setx`, `export`) **được ưu tiên** hơn `.env`. Ví dụ, muốn chạy tạm trên database khác thì đặt `$env:ODOO_DB="db-khac"` cho cửa sổ đó.
+- Cú pháp file: mỗi dòng `TEN=gia-tri`, không cần dấu ngoặc kép (nếu có thì được bỏ đi). Dòng bắt đầu bằng `#` là ghi chú.
+- `.env` chỉ được đọc khi chạy qua `pytest`. Các lệnh không qua pytest vẫn cần biến môi trường của shell, ví dụ `scripts/run_odoo17_tests.sh` kiểm tra biến trước khi gọi pytest, hay script tự viết dùng `OdooConfig.from_env()`.
+
+### Các biến
+
 
 | Biến | Mặc định | Ý nghĩa |
 |------|----------|---------|
@@ -105,6 +135,8 @@ Mọi test UI cần **một Odoo đang chạy**. Cấu hình bằng biến môi 
 | `HEADLESS` | `true` | `false` để xem trình duyệt thao tác |
 | `SLOW_MO` | `0` | Làm chậm mỗi thao tác (ms), ví dụ `500` |
 | `VENDOR_INVOICE_PATH` | (trống) | Đường dẫn PDF hóa đơn cho test tạo PO |
+
+Đặt tạm cho cửa sổ terminal hiện tại, thay cho `.env` hoặc để ghi đè giá trị trong `.env`:
 
 ```powershell
 # PowerShell

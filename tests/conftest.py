@@ -1,6 +1,7 @@
 """Pytest fixtures for Odoo Playwright testing."""
 
 import os
+from pathlib import Path
 
 import pytest
 from playwright.async_api import Browser as AsyncBrowser
@@ -11,6 +12,34 @@ from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_
 from odoo_playwright.testcase import OdooConfig
 from odoo_playwright.ui import OdooUI
 from odoo_playwright.ui_async import AsyncOdooUI
+
+ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+
+
+def load_env_file(path: Path) -> None:
+    """Load KEY=VALUE lines from ``path`` into os.environ.
+
+    Variables already set in the shell ($env:, setx, export) win over the file.
+    Blank lines and lines starting with '#' are ignored; an optional 'export '
+    prefix and surrounding quotes around the value are stripped.
+    """
+    if not path.is_file():
+        return
+    for raw in path.read_text(encoding="utf-8-sig").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):]
+        key, value = line.split("=", 1)
+        key, value = key.strip(), value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        if key:
+            os.environ.setdefault(key, value)
+
+
+load_env_file(ENV_FILE)
 
 
 def pytest_addoption(parser):

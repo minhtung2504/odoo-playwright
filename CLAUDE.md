@@ -12,7 +12,7 @@ pip install -e ".[mcp]"        # optional
 playwright install chromium
 ```
 
-Tests need a **live Odoo instance**. Configure via environment variables (`conftest.py` reads them; nothing loads `.env` automatically, so export them in the shell):
+Tests need a **live Odoo instance**. Configure via environment variables, or put them in a repo-root `.env` (copy `.env.example`): `tests/conftest.py` loads it at import, and variables already set in the shell win over the file:
 
 ```bash
 export ODOO_URL=http://localhost:8069 ODOO_USER=admin ODOO_PASSWORD=admin ODOO_DB=test ODOO_VERSION=17
@@ -80,5 +80,5 @@ A behavior change or selector fix usually has to be made in both halves. Check t
 - **`OdooUI.page` is an attribute, which shadows the `page(name)` method** (`ui.py`, and similarly `ui_async.py`). The attribute is set in `__init__`, so `ui.page` is the Playwright `Page` and `ui.page("Sales")` will not work. Build page objects with `OdooPage(ui, "Sales")` / `AsyncOdooPage` instead.
 - `pytest.ini` takes precedence over `[tool.pytest.ini_options]` in `pyproject.toml`. Edit `pytest.ini` for test settings. It also uses `--strict-markers`, so new markers must be registered there.
 - `docs/odoo17-testing/FIX_CHECKLIST.md` and `scripts/run_odoo17_tests.sh` refer to `ODOO17_FIXES_NEEDED.md`, which is not in the repo.
-- `.env` is gitignored and not read by the code. The run script expects `ODOO_URL`, `ODOO_USER`, and `ODOO_PASSWORD` in the environment.
+- `.env` is gitignored and only loaded by `tests/conftest.py`, so it applies to pytest runs only. `scripts/run_odoo17_tests.sh` checks its variables before pytest starts, so it still expects `ODOO_URL`, `ODOO_USER`, and `ODOO_PASSWORD` in the environment.
 - `skills/playwright-mcp.skill` is not part of the package.
