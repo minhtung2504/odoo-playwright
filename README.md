@@ -70,6 +70,27 @@ playwright install chromium
 
 Có thể cài một lần: `pip install -e ".[dev,pdf,mcp]"`.
 
+### Lỗi `pytest is not recognized` trên Windows
+
+PowerShell báo `The term 'pytest' is not recognized...` khi `.venv` chưa được kích hoạt trong cửa sổ đang dùng. Có hai cách:
+
+```powershell
+# Cách 1: gọi thẳng Python của .venv, không cần kích hoạt
+.\.venv\Scripts\python.exe -m pytest tests/test_create_po_from_vendor_invoice.py -vvs --invoice "C:\path\hoa-don.pdf"
+
+# Cách 2: kích hoạt .venv (làm lại mỗi khi mở cửa sổ PowerShell mới), sau đó gõ pytest bình thường
+.\.venv\Scripts\Activate.ps1
+pytest tests/test_create_po_from_vendor_invoice.py -vvs --invoice "C:\path\hoa-don.pdf"
+```
+
+Nếu `Activate.ps1` báo *"running scripts is disabled on this system"*, chạy lệnh sau một lần rồi kích hoạt lại:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+Biến môi trường `$env:...` ([xem bên dưới](#cấu-hình-kết-nối-odoo)) chỉ có hiệu lực trong cửa sổ PowerShell đã đặt chúng. Mở cửa sổ mới thì phải đặt lại.
+
 ## Cấu hình kết nối Odoo
 
 Mọi test UI cần **một Odoo đang chạy**. Cấu hình bằng biến môi trường. File `.env` **không** được đọc tự động, nên phải export trong shell:
