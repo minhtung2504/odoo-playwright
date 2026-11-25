@@ -30,11 +30,11 @@ pytest -vvs -x                                            # verbose, print outpu
 pytest -m "not integration"                               # deselect markers defined in pytest.ini
 ```
 
-Wrappers (both hardcode Odoo 17 test groups; `run_odoo17_tests.sh` is bash-only):
+Wrappers (both hardcode Odoo 17 test groups; `scripts/run_odoo17_tests.sh` is bash-only):
 
 ```bash
-python test_runner.py list | all | <group>
-./run_odoo17_tests.sh quick | forms | list | modals | all
+python scripts/test_runner.py list | all | <group>
+./scripts/run_odoo17_tests.sh quick | forms | list | modals | all
 ```
 
 Lint / types (configured in `pyproject.toml`; the dev extras provide the tools):
@@ -61,7 +61,7 @@ A behavior change or selector fix usually has to be made in both halves. Check t
 
 **Object graph.** `OdooUI(page, base_url, version)` is the root. In `__init__` it stores the Playwright `Page`, a `selectors` object from `selectors.get_selectors(version)`, and a `WaitHelper`. Views take the UI object plus a model name, for example `FormView(ui, "res.partner")`, and call back into `ui` for shared actions.
 
-**Version-keyed selectors.** `selectors.py` holds one dict per Odoo version (`SELECTORS_V16`...`SELECTORS_V19`) keyed by logical names such as `BUTTON_SAVE` or `LIST_ROW`. `OdooSelectors.get()` falls back to the V17 dict for unknown versions. Look up selectors by key via `self.selectors.get(...)` rather than hardcoding CSS in methods. Several V17 selectors are marked in comments as unverified, and `test_runner.py` lists known-broken V17 tests (`click_delete`, `fill_many2one`, `close_modal`, `go_to_tab`).
+**Version-keyed selectors.** `selectors.py` holds one dict per Odoo version (`SELECTORS_V16`...`SELECTORS_V19`) keyed by logical names such as `BUTTON_SAVE` or `LIST_ROW`. `OdooSelectors.get()` falls back to the V17 dict for unknown versions. Look up selectors by key via `self.selectors.get(...)` rather than hardcoding CSS in methods. Several V17 selectors are marked in comments as unverified, and `scripts/test_runner.py` lists known-broken V17 tests (`click_delete`, `fill_many2one`, `close_modal`, `go_to_tab`).
 
 **Tests.** `tests/conftest.py` provides:
 - sync fixtures `odoo_ui` and async fixtures `async_odoo_ui`. Both log in before the test runs.
@@ -79,6 +79,6 @@ A behavior change or selector fix usually has to be made in both halves. Check t
 
 - **`OdooUI.page` is an attribute, which shadows the `page(name)` method** (`ui.py`, and similarly `ui_async.py`). The attribute is set in `__init__`, so `ui.page` is the Playwright `Page` and `ui.page("Sales")` will not work. Build page objects with `OdooPage(ui, "Sales")` / `AsyncOdooPage` instead.
 - `pytest.ini` takes precedence over `[tool.pytest.ini_options]` in `pyproject.toml`. Edit `pytest.ini` for test settings. It also uses `--strict-markers`, so new markers must be registered there.
-- `FIX_CHECKLIST.md` and `run_odoo17_tests.sh` refer to `ODOO17_FIXES_NEEDED.md`, which is not in the repo.
+- `docs/odoo17-testing/FIX_CHECKLIST.md` and `scripts/run_odoo17_tests.sh` refer to `ODOO17_FIXES_NEEDED.md`, which is not in the repo.
 - `.env` is gitignored and not read by the code. The run script expects `ODOO_URL`, `ODOO_USER`, and `ODOO_PASSWORD` in the environment.
-- `playwright-mcp.skill` is an untracked file in the repo root and is not part of the package.
+- `skills/playwright-mcp.skill` is not part of the package.
